@@ -61,6 +61,15 @@ function csurf (options) {
   // enforced path (all other options ignored)
   var enforcePath = opts.enforcePath
 
+  // debug
+  var debug = opts.debug || false
+  
+  function log () {
+    if (debug === true) {
+      console.debug(...arguments)
+    }
+  }
+
   if (!Array.isArray(ignoreMethods)) {
     throw new TypeError('option ignoreMethods must be an array')
   }
@@ -107,18 +116,22 @@ function csurf (options) {
     // generate & set secret
     if (!secret) {
       secret = tokens.secretSync()
+      log(`CSRF: missing secret, generating: 'secret': ${secret}`)
       setSecret(req, res, sessionKey, secret, cookie)
     }
 
     // verify the incoming token
     if (enforcePath && req.path.startsWith(enforcePath)) {
+      log(`CSRF: path enforced [${req.path}]`)
       if (!tokens.verify(secret, value(req))) {
+        log(`CSRF: invalid csrf token (enforced): 'secret': ${secret}, 'value': ${value(req)}`)
         return next(createError(403, 'invalid csrf token', {
           code: 'EBADCSRFTOKEN'
         }))
       }
     } else {
       if (!ignoreMethod[req.method] && !tokens.verify(secret, value(req))) {
+        log(`CSRF: invalid csrf [${req.method}]: 'secret': ${secret}, 'value': ${value(req)}`)
         return next(createError(403, 'invalid csrf token', {
           code: 'EBADCSRFTOKEN'
         }))
